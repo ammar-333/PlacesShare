@@ -10,6 +10,13 @@ const app = express();
 //middleware
 app.use(express.json());
 
+app.use((req, res, next) => {
+    res.setHeader('Access-control-Allow-Origin', '*');
+    res.setHeader('Access-control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization');
+    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PATCH, DELETE');
+    next();
+});
+
 //home page
 app.get('/', (req, res, next) => {
     res.json({"message": "Hello to place share"});
