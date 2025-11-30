@@ -1,46 +1,51 @@
-const express = require("express");
-const mongoose = require("mongoose");
+const fs = require('fs');
+const path = require('path');
 
-const PORT = 5000;
-const placesRouter = require("./routes/places-route");
-const usersRouter = require("./routes/users-routes");
+const express = require('express');
+const bodyParser = require('body-parser');
+const mongoose = require('mongoose');
+
+const placesRoutes = require('./routes/places-routes');
+const usersRoutes = require('./routes/users-routes');
+const HttpError = require('./models/http-error');
+
 const app = express();
 
+app.use(bodyParser.json());
 
-//middleware
-app.use(express.json());
+app.use('/uploads/images', express.static(path.join('uploads', 'images')));
 
 app.use((req, res, next) => {
-    res.setHeader('Access-control-Allow-Origin', '*');
-    res.setHeader('Access-control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization');
-    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PATCH, DELETE');
-    next();
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader(
+    'Access-Control-Allow-Headers',
+    'Origin, X-Requested-With, Content-Type, Accept, Authorization'
+  );
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PATCH, DELETE');
+
+  next();
 });
 
-//home page
-app.get('/', (req, res, next) => {
-    res.json({"message": "Hello to place share"});
-})
+app.use('/api/places', placesRoutes);
+app.use('/api/users', usersRoutes);
 
-//Routes
-app.use('/api/places', placesRouter);
-app.use('/api/users', usersRouter);
-
-//notfound (only executed if nn route has executed and send a respone)
 app.use((req, res, next) => {
-    const error = new Error("Could not find this Route")
-    error.code = 404;
-    next(error);
+  const error = new HttpError('Could not find this route.', 404);
+  throw error;
 });
 
-//error handler
 app.use((error, req, res, next) => {
-    if (res.headerSent) {
-        return next(error);
-    }
-    res.status(500).json({"message": error.message} || "An unknown error happend!");
+  if (req.file) {
+    fs.unlink(req.file.path, err => {
+      console.log(err);
+    });
+  }
+  if (res.headerSent) {
+    return next(error);
+  }
+  res.status(error.code || 500);
+  res.json({ message: error.message || 'An unknown error occurred!' });
 });
-
 
 mongoose
     .connect("mongodb://localhost:27017/placesShare")
